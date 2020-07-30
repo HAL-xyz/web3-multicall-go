@@ -2,7 +2,7 @@ package multicall
 
 import (
 	"encoding/hex"
-	"github.com/alethio/web3-go/ethrpc"
+	"github.com/HAL-xyz/ethrpc"
 )
 
 type Multicall interface {
@@ -12,11 +12,11 @@ type Multicall interface {
 }
 
 type multicall struct {
-	eth    ethrpc.ETHInterface
+	eth    *ethrpc.EthRPC
 	config *Config
 }
 
-func New(eth ethrpc.ETHInterface, opts ...Option) (Multicall, error) {
+func New(ethCli *ethrpc.EthRPC, opts ...Option) (Multicall, error) {
 	config := &Config{
 		MulticallAddress: MainnetAddress,
 		Gas:              "0x400000000",
@@ -27,7 +27,7 @@ func New(eth ethrpc.ETHInterface, opts ...Option) (Multicall, error) {
 	}
 
 	return &multicall{
-		eth:    eth,
+		eth:    ethCli,
 		config: config,
 	}, nil
 }
@@ -66,13 +66,13 @@ func (mc multicall) makeRequest(calls ViewCalls, block string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	payload := make(map[string]string)
-	payload["to"] = mc.config.MulticallAddress
-	payload["data"] = AggregateMethod + hex.EncodeToString(payloadArgs)
-	payload["gas"] = mc.config.Gas
-	var resultRaw string
-	err = mc.eth.MakeRequest(&resultRaw, ethrpc.ETHCall, payload, block)
-	return resultRaw, err
+	params := ethrpc.T{
+		To: mc.config.MulticallAddress,
+		From: "0x2e34c46ad2f08a66bc9ff2e9fe5918590551e958", // TODO update our lib so this isn't required
+		Data: AggregateMethod + hex.EncodeToString(payloadArgs),
+	}
+
+	return mc.eth.EthCall(params, block)
 }
 
 func (mc multicall) Contract() string {

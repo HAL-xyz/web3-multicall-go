@@ -3,23 +3,33 @@ package multicall_test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/alethio/web3-go/ethrpc"
-	"github.com/alethio/web3-go/ethrpc/provider/httprpc"
-	"github.com/alethio/web3-multicall-go/multicall"
+	"github.com/HAL-xyz/ethrpc"
+	"github.com/HAL-xyz/web3-multicall-go/multicall"
+	"github.com/stretchr/testify/assert"
 	"testing"
-	"time"
 )
 
 func TestExampleViwCall(t *testing.T) {
-	eth, err := getETH("https://mainnet.infura.io/v3/17ed7fe26d014e5b9be7dfff5368c69d")
+
+	cli := ethrpc.New("https://mainnet.infura.io/v3/17ed7fe26d014e5b9be7dfff5368c69d")
+	mc, _ := multicall.New(cli)
+
 	vc := multicall.NewViewCall(
 		"key.1",
-		"0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643",
-		"totalReserves()(uint256)",
+		"0x6b175474e89094c44da98b954eedeac495271d0f",
+		"symbol()(string)",
 		[]interface{}{},
 	)
-	vcs := multicall.ViewCalls{vc}
-	mc, _ := multicall.New(eth)
+
+	vc2 := multicall.NewViewCall(
+		"key.2",
+		"0x6b175474e89094c44da98b954eedeac495271d0f",
+		"decimals()(uint8)",
+		[]interface{}{},
+	)
+
+	vcs := multicall.ViewCalls{vc, vc2}
+
 	block := "latest"
 	res, err := mc.Call(vcs, block)
 	if err != nil {
@@ -31,13 +41,7 @@ func TestExampleViwCall(t *testing.T) {
 	fmt.Println(res)
 	fmt.Println(err)
 
-}
-
-func getETH(url string) (ethrpc.ETHInterface, error) {
-	provider, err := httprpc.New(url)
-	if err != nil {
-		return nil, err
-	}
-	provider.SetHTTPTimeout(5 * time.Second)
-	return ethrpc.New(provider)
+	assert.NoError(t, err)
+	assert.Equal(t, res.Calls["key.1"].Decoded[0].(string), "DAI")
+	assert.Equal(t, res.Calls["key.2"].Decoded[0].(uint8), uint8(18))
 }
