@@ -3,9 +3,9 @@ package multicall_test
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/HAL-xyz/web3-multicall-go/multicall"
 	"github.com/alethio/web3-go/ethrpc"
 	"github.com/alethio/web3-go/ethrpc/provider/httprpc"
-	"github.com/alethio/web3-multicall-go/multicall"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"math/big"
