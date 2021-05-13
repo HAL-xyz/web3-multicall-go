@@ -2,7 +2,6 @@ package multicall
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -110,47 +109,10 @@ func (call ViewCall) argsCallData() ([]byte, error) {
 		}
 
 		arguments[index] = abi.Argument{Type: argType}
-		argumentValues[index], err = call.getArgument(index, argTypeStr)
-		if err != nil {
-			return nil, err
-		}
+		argumentValues[index] = call.arguments[index]
 	}
 
 	return arguments.Pack(argumentValues...)
-}
-
-func (call ViewCall) getArgument(index int, argumentType string) (interface{}, error) {
-	arg := call.arguments[index]
-	if argumentType == "address" {
-		address, ok := arg.(string)
-		if !ok {
-			return nil, fmt.Errorf("expected address argument to be a string")
-		}
-		return toByteArray(address)
-	} else if numericArg.MatchString(argumentType) {
-		if num, ok := arg.(json.Number); ok {
-			if v, err := num.Int64(); err != nil {
-				return big.NewInt(v), nil
-			} else if v, err := num.Float64(); err != nil {
-				return big.NewInt(int64(v)), nil
-			} else {
-			}
-		} else {
-			int64 := reflect.TypeOf(int64(0))
-			argType := reflect.TypeOf(arg)
-			kind := argType.Kind()
-			if kind == reflect.String {
-				if val, ok := new(big.Int).SetString(call.arguments[index].(string), 10); !ok {
-					return nil, fmt.Errorf("could not parse %s as a base 10 number", call.arguments[index])
-				} else {
-					return val, nil
-				}
-			} else if argType.ConvertibleTo(int64) {
-				return big.NewInt(reflect.ValueOf(arg).Convert(int64).Int()), nil
-			}
-		}
-	}
-	return arg, nil
 }
 
 func (call ViewCall) decode(raw []byte) ([]interface{}, error) {
