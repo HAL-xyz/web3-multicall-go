@@ -3,18 +3,39 @@ package multicall_test
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/HAL-xyz/ethrpc"
 	"github.com/HAL-xyz/web3-multicall-go/multicall"
-	"github.com/alethio/web3-go/ethrpc"
-	"github.com/alethio/web3-go/ethrpc/provider/httprpc"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
-	"time"
 )
 
+var cli = GetCustomCli()
+var lastBlockNo, _ = cli.cli.EthBlockNumber()
+var lastBlockHex = fmt.Sprintf("%x", lastBlockNo)
+
+func GetCustomCli() CustomCli {
+	return CustomCli{cli: ethrpc.New("https://mainnet.infura.io/v3/17ed7fe26d014e5b9be7dfff5368c69d")}
+}
+
+type CustomCli struct {
+	cli *ethrpc.EthRPC
+}
+
+func (c CustomCli) MakeEthRpcCall(cntAddress, data string, blockNumber int) (string, error) {
+	params := ethrpc.T{
+		To:   cntAddress,
+		From: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+		Data: data,
+	}
+	hexBlockNo := fmt.Sprintf("0x%x", blockNumber)
+
+	return c.cli.EthCall(params, hexBlockNo)
+}
+
 func TestExampleViwCall(t *testing.T) {
-	eth, err := getETH("https://mainnet.infura.io/v3/17ed7fe26d014e5b9be7dfff5368c69d")
+
 	vc := multicall.NewViewCall(
 		"key.1",
 		"0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643",
@@ -22,9 +43,8 @@ func TestExampleViwCall(t *testing.T) {
 		[]interface{}{},
 	)
 	vcs := multicall.ViewCalls{vc}
-	mc, _ := multicall.New(eth)
-	block := "latest"
-	res, err := mc.Call(vcs, block)
+	mc, _ := multicall.New(cli)
+	res, err := mc.Call(vcs, lastBlockHex)
 	if err != nil {
 		panic(err)
 	}
@@ -37,7 +57,6 @@ func TestExampleViwCall(t *testing.T) {
 }
 
 func TestViwCallWithDecodeError(t *testing.T) {
-	eth, err := getETH("https://mainnet.infura.io/v3/17ed7fe26d014e5b9be7dfff5368c69d")
 	vc1 := multicall.NewViewCall(
 		"vc1-ok",
 		"0x1f9840a85d5af5bf1d1762f925bdaddc4201f984",
@@ -70,9 +89,8 @@ func TestViwCallWithDecodeError(t *testing.T) {
 	)
 
 	vcs := multicall.ViewCalls{vc1, vc2, vc3, vc4, vc5}
-	mc, _ := multicall.New(eth)
-	block := "latest"
-	res, err := mc.Call(vcs, block)
+	mc, _ := multicall.New(GetCustomCli())
+	res, err := mc.Call(vcs, lastBlockHex)
 	assert.NoError(t, err)
 
 	assert.Equal(t, true, res.Calls["vc1-ok"].Success)
@@ -81,13 +99,4 @@ func TestViwCallWithDecodeError(t *testing.T) {
 	assert.Equal(t, false, res.Calls["vc3-fail"].Success)
 	assert.Equal(t, true, res.Calls["vc4-ok"].Success)
 	assert.Equal(t, true, res.Calls["vc5-ok"].Success)
-}
-
-func getETH(url string) (ethrpc.ETHInterface, error) {
-	provider, err := httprpc.New(url)
-	if err != nil {
-		return nil, err
-	}
-	provider.SetHTTPTimeout(5 * time.Second)
-	return ethrpc.New(provider)
 }

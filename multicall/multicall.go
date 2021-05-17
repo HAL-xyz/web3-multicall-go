@@ -2,7 +2,9 @@ package multicall
 
 import (
 	"encoding/hex"
-	"github.com/alethio/web3-go/ethrpc"
+	"fmt"
+	"strconv"
+	"strings"
 )
 
 type Multicall interface {
@@ -12,11 +14,15 @@ type Multicall interface {
 }
 
 type multicall struct {
-	eth    ethrpc.ETHInterface
+	eth    ETHIfc
 	config *Config
 }
 
-func New(eth ethrpc.ETHInterface, opts ...Option) (Multicall, error) {
+type ETHIfc interface {
+	MakeEthRpcCall(cntAddress, data string, blockNumber int) (string, error)
+}
+
+func New(eth ETHIfc, opts ...Option) (Multicall, error) {
 	config := &Config{
 		MulticallAddress: MainnetAddress,
 		Gas:              "0x400000000",
@@ -66,13 +72,12 @@ func (mc multicall) makeRequest(calls ViewCalls, block string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	payload := make(map[string]string)
-	payload["to"] = mc.config.MulticallAddress
-	payload["data"] = AggregateMethod + hex.EncodeToString(payloadArgs)
-	payload["gas"] = mc.config.Gas
-	var resultRaw string
-	err = mc.eth.MakeRequest(&resultRaw, ethrpc.ETHCall, payload, block)
-	return resultRaw, err
+	data := AggregateMethod + hex.EncodeToString(payloadArgs)
+	blockNo, err := strconv.ParseInt(strings.TrimPrefix(block, "0x"), 16, 64)
+	if err != nil {
+		return "", fmt.Errorf("invalid block no: %s", block)
+	}
+	return mc.eth.MakeEthRpcCall(mc.config.MulticallAddress, data, int(blockNo))
 }
 
 func (mc multicall) Contract() string {
