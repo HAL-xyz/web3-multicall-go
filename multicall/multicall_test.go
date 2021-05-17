@@ -1,7 +1,6 @@
 package multicall_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/HAL-xyz/ethrpc"
 	"github.com/HAL-xyz/web3-multicall-go/multicall"
@@ -45,15 +44,9 @@ func TestExampleViwCall(t *testing.T) {
 	vcs := multicall.ViewCalls{vc}
 	mc, _ := multicall.New(cli)
 	res, err := mc.Call(vcs, lastBlockHex)
-	if err != nil {
-		panic(err)
-	}
+	assert.NoError(t, err)
 
-	resJson, _ := json.Marshal(res)
-	fmt.Println(string(resJson))
-	fmt.Println(res)
-	fmt.Println(err)
-
+	assert.IsType(t, big.NewInt(0), res.Calls["key.1"].Decoded[0])
 }
 
 func TestViwCallWithDecodeError(t *testing.T) {
